@@ -1,0 +1,31 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# agentdeck · tmux-agent-sidebar Verdrahtung
+# Additiv an ~/.tmux.conf anhängen — wie tmux-resurrect / tmux-continuum.
+# WICHTIG: Alle @sidebar_* Optionen MÜSSEN vor der run-shell-Zeile stehen
+# (das Plugin liest sie beim Laden ein).
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ─── Verhalten ───────────────────────────────────────────────────────────────
+# Toggle: prefix + e (aktuelles Fenster) / prefix + E (alle Fenster).
+set -g @sidebar_width 22%           # Default 15% — 22% zeigt Prompts/Response-Previews lesbar
+set -g @sidebar_position left       # left | right
+set -g @sidebar_auto_create off     # Default on — AUS, sonst öffnet continuum-Restore viele Sidebars
+# set -g @sidebar_bottom_height 20  # Activity/Git-Panel-Höhe in Zeilen (0 = ausblenden)
+# set -g @sidebar_pet off           # animiertes Pet im Bottom-Panel (Spielerei, Default aus)
+
+# ─── Dezente Farbakzente (Tokyo-Night, passend zu bg #1a1b26) ────────────────
+# Farbe hier = Funktion, nicht Deko: Status auf einen Blick lesbar.
+# Auskommentieren = zurück zu den Plugin-Defaults (256-Palette).
+set -g @sidebar_color_running       "#9ece6a"   # arbeitet  — gedämpftes Grün
+set -g @sidebar_color_waiting       "#e0af68"   # wartet    — Amber
+set -g @sidebar_color_idle          "#565f89"   # idle      — gedämpft
+set -g @sidebar_color_error         "#f7768e"   # Fehler    — weiches Rot
+set -g @sidebar_color_accent        "#7aa2f7"   # Akzent    — Blau
+set -g @sidebar_color_border        "#3b4261"   # Rand      — zurückhaltend
+set -g @sidebar_color_selection     "#292e42"   # Auswahl-Highlight
+set -g @sidebar_color_section_title "#7aa2f7"
+set -g @sidebar_color_branch        "#7dcfff"   # Git-Branch
+set -g @sidebar_color_response_arrow "#7dcfff"
+
+# ─── Plugin laden (MUSS die letzte Zeile dieses Blocks sein) ─────────────────
+run-shell ~/.tmux/plugins/tmux-agent-sidebar/tmux-agent-sidebar.tmux
