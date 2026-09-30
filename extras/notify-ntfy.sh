@@ -17,8 +17,21 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -u
 
-NTFY_URL="${NTFY_URL:-${NTFY_TOPIC:+https://ntfy.sh/$NTFY_TOPIC}}"
-[ -z "${NTFY_URL:-}" ] && exit 0                 # nicht konfiguriert → still nichts tun
+# Optionale Config mit NTFY_URL/NTFY_TOPIC laden, falls nicht schon in der Umgebung gesetzt.
+# Reihenfolge: $AGENTDECK_NTFY_ENV → ~/.config/agentdeck/ntfy.env
+if [ -z "${NTFY_URL:-}${NTFY_TOPIC:-}" ]; then
+  for f in "${AGENTDECK_NTFY_ENV:-}" "$HOME/.config/agentdeck/ntfy.env"; do
+    if [ -n "$f" ] && [ -f "$f" ]; then set -a; . "$f"; set +a; break; fi
+  done
+fi
+
+# Ziel bauen: Basis-URL + Topic (unterstützt NTFY_URL=Basis + NTFY_TOPIC, ODER komplette NTFY_URL)
+if [ -n "${NTFY_TOPIC:-}" ]; then
+  TARGET="${NTFY_URL:-https://ntfy.sh}/${NTFY_TOPIC}"
+else
+  TARGET="${NTFY_URL:-}"
+fi
+[ -z "$TARGET" ] && exit 0                        # nicht konfiguriert → still nichts tun
 command -v curl >/dev/null 2>&1 || exit 0
 
 input="$(cat 2>/dev/null)"
@@ -53,6 +66,6 @@ curl -fsS --max-time 5 \
   -H "Priority: ${prio}" \
   -H "Tags: ${tags}" \
   -d "${body}" \
-  "$NTFY_URL" >/dev/null 2>&1 || true
+  "$TARGET" >/dev/null 2>&1 || true
 
 exit 0
