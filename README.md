@@ -143,7 +143,7 @@ die Zeile im Snippet auskommentieren, um zum Plugin-Default zurückzukehren.
 | `n` / `x` | Worktree neu / entfernen |
 | `Esc` | Fokus zurück / Popup schließen |
 
-Volle Bedienung: [`docs/RUNBOOK.md`](docs/RUNBOOK.md).
+Vollständige Referenz: [`docs/KEYBINDS.md`](docs/KEYBINDS.md) · Betrieb & Gotchas: [`docs/RUNBOOK.md`](docs/RUNBOOK.md).
 
 ---
 
