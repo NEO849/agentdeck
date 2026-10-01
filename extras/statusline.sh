@@ -47,7 +47,11 @@ fi
 # Git-Branch: robust direkt aus git (unabhängig vom JSON-Schema)
 if [ -n "$cwd" ] && command -v git >/dev/null 2>&1; then
   br="$(git -C "$cwd" rev-parse --abbrev-ref HEAD 2>/dev/null)"
-  [ -n "$br" ] && seg+=("${GREEN}⎇ ${br}${RST}")
+  if [ -n "$br" ]; then
+    short_br="${br%%-*}"                       # bis zum ersten '-' kürzen: feat/gallery-indexeddb-fetch → feat/gallery
+    [ ${#short_br} -gt 22 ] && short_br="${short_br:0:21}…"
+    seg+=("${GREEN}⎇ ${short_br}${RST}")
+  fi
 fi
 
 # Kontext-Auslastung: echter Mini-Balken aus used_percentage, farbcodiert
