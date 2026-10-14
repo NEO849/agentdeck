@@ -41,10 +41,13 @@ collect_rows() {
   command -v tmux >/dev/null 2>&1 || { printf '#NOTMUX\n'; return 0; }
 
   local D='|'
-  local fmt="#{session_name}${D}#{window_id}${D}#{pane_id}${D}#{pane_current_command}${D}#{@pane_agent}${D}#{@pane_session_id}${D}#{@pane_status}${D}#{@pane_attention}${D}#{@pane_wait_reason}${D}#{@pane_subagents}${D}#{@pane_cwd}${D}#{@deck_pane}"
+  # session_name + pane_current_command sind NICHT hiroppy-sanitisiert und duerfen
+  # theoretisch '|' enthalten → per tmux-Format s/[|]/_/ ersetzen, sonst verschoeben
+  # sich die Felder. @pane_*-Werte (inkl. @pane_cwd) sind bereits '|'-frei.
+  local fmt="#{s/[|]/_/:session_name}${D}#{window_id}${D}#{pane_id}${D}#{s/[|]/_/:pane_current_command}${D}#{@pane_agent}${D}#{@pane_session_id}${D}#{@pane_status}${D}#{@pane_attention}${D}#{@pane_wait_reason}${D}#{@pane_subagents}${D}#{@pane_cwd}${D}#{@deck_pane}"
   local panes sessions
   panes=$(tmux list-panes -a -F "$fmt" 2>/dev/null) || { printf '#NOTMUX\n'; return 0; }
-  sessions=$(tmux list-sessions -F "#{session_name}${D}#{session_attached}" 2>/dev/null) || true
+  sessions=$(tmux list-sessions -F "#{s/[|]/_/:session_name}${D}#{session_attached}" 2>/dev/null) || true
 
   # --- Sessions-Index (Reihenfolge + attached) ---
   declare -A attached_of
@@ -73,8 +76,8 @@ collect_rows() {
   declare -A has_claude sess_pc sess_cmd model_cache
   local claude_rows=()
   local n_claude=0 n_action=0
-  local session win pane cmd agent sid st att wr sub pcwd deck
-  while IFS=$D read -r session win pane cmd agent sid st att wr sub pcwd deck; do
+  local session _win pane cmd agent sid st att wr sub pcwd deck
+  while IFS=$D read -r session _win pane cmd agent sid st att wr sub pcwd deck; do
     [ -n "$session" ] || continue
     [ "${deck:-}" = "1" ] && continue                 # eigenen Deck-Pane nie listen
     sess_pc[$session]=$(( ${sess_pc[$session]:-0} + 1 ))
@@ -99,7 +102,7 @@ collect_rows() {
     fi
 
     local mid
-    if [ -n "${model_cache[$sid]:-}" ]; then
+    if [[ -v model_cache[$sid] ]]; then           # auch leere Treffer cachen (kein Re-Read)
       mid="${model_cache[$sid]}"
     else
       mid="$(_deck_model_id "$sid")"; model_cache[$sid]="$mid"
@@ -107,7 +110,9 @@ collect_rows() {
     local model; model="$(model_name "$mid")"
 
     local agentlabel="${sub:-}"; [ -z "$agentlabel" ] && agentlabel="-"
-    local target="${session}:${win}.${pane}"
+    # Ziel = globale Pane-ID (eindeutig, monoton) — kein Parsen von session:win.pane,
+    # damit ':' oder '.' im Session-Namen den Sprung nicht verfälschen.
+    local target="${pane}"
     local sk=2; case "$state" in error|action) sk=0 ;; running) sk=1 ;; esac
 
     claude_rows+=( "$(printf '%s|%s|%s|%s|%s|%s|%s|%s|%s|%s' \
