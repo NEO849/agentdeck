@@ -29,7 +29,9 @@ if [ -z "${NTFY_URL:-}${NTFY_TOPIC:-}" ]; then
     if [ -n "$f" ] && [ -f "$f" ]; then set -a; . "$f"; set +a; break; fi
   done
 fi
-if [ -n "${NTFY_TOPIC:-}" ]; then TARGET="${NTFY_URL:-https://ntfy.sh}/${NTFY_TOPIC}"; else TARGET="${NTFY_URL:-}"; fi
+# Fail-CLOSED: ohne explizite NTFY_URL wird NICHT auf öffentliches ntfy.sh zurückgefallen
+# (Security: Inhalte könnten sonst public leaken). Kein URL -> kein TARGET -> kein Send.
+if [ -n "${NTFY_TOPIC:-}" ] && [ -n "${NTFY_URL:-}" ]; then TARGET="${NTFY_URL}/${NTFY_TOPIC}"; else TARGET="${NTFY_URL:-}"; fi
 
 event="${1:-}"
 input="$(cat 2>/dev/null)"
@@ -50,10 +52,15 @@ if [ "$event" = "turnstart" ] || [ "$event" = "UserPromptSubmit" ]; then
   exit 0
 fi
 
-# ab hier wird ggf. gesendet → ohne Ziel/curl raus
+# ab hier wird ggf. gesendet → ohne Ziel/python3 raus
 [ -z "$TARGET" ] && exit 0
-command -v curl >/dev/null 2>&1 || exit 0
-send(){ curl -fsS --max-time 6 -H "Title: $1" -H "Priority: $2" -H "Tags: $3" -d "$4" "$TARGET" >/dev/null 2>&1 || true; }
+command -v python3 >/dev/null 2>&1 || exit 0
+# Versand über die gemeinsame fail-safe Lib: JSON → Emoji/UTF-8/Token korrekt
+# (das alte Header-curl verschluckte Emojis per latin-1). Session-Pings gehen in
+# ihr EIGENES Topic (NTFY_TOPIC_SESSION=alert-wartet), nicht mehr in den Radar.
+# Hintergrund + Subshell → der Hook blockiert Claude Code niemals (auch nicht,
+# wenn der ntfy-Server hängt). send() args: 1=Titel 2=Priorität 3=Tags 4=Text
+send(){ ( PYTHONPATH=/root/automation python3 -c 'import sys; from lib import ntfy; ntfy.send(sys.argv[1], sys.argv[4], topic="session", priority=sys.argv[2], tags=sys.argv[3])' "$1" "$2" "$3" "$4" >/dev/null 2>&1 & ) ; }
 
 # away = du warst nicht aktiv dran. Heuristik über jüngste tmux-Client-Aktivität.
 # Unklar/ohne tmux → als "weg" behandeln (lieber einmal pingen als verpassen).

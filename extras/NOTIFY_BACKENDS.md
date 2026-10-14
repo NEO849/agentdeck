@@ -8,6 +8,12 @@ reinem SSH), schalten sie sich **still ab**.
 Alle drei Backends nutzen dieselbe Hook-Logik (`extras/notify-ntfy.sh` als Vorlage), nur ein anderer
 Kanal. **ntfy ist der Default** (kostenlos, kein Account nötig).
 
+> **Update 2026-10-08:** ntfy läuft jetzt **self-hosted** (Tailscale-only, `100.80.155.28:8936`,
+> `auth-default-access: deny-all`). `notify-ntfy.sh` sendet daher mit `Authorization: Bearer
+> $NTFY_TOKEN` (aus `ntfy.env`) und ist **fail-closed** (ohne `NTFY_URL` KEIN Fallback auf
+> öffentliches ntfy.sh). Alle Pipeline-Sender nutzen die geteilte Lib `/root/automation/lib/ntfy.py`.
+> Details: Memory `project_ntfy_alerting_stack`.
+
 ---
 
 ## Hook registrieren (`~/.claude/settings.json`)
