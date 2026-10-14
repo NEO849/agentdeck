@@ -1,21 +1,22 @@
 <div align="center">
 
-<img src="docs/readme/hero.png" width="880" alt="agentdeck — Live-Agenten-Panel für tmux + Claude Code">
+<img src="docs/readme/hero.png" width="880" alt="agentdeck — Session-Überblick deiner Claude-Instanzen in tmux">
 
 # agentdeck
 
-### Die Integrationsschicht, die hiroppys `tmux-agent-sidebar` in Claude Code bringt — in einem Befehl.
+### Ein Blick, und du weißt: welche tmux-Session, wo läuft Claude, wo ist Handlungsbedarf.
 
-**Live-Agenten-Panel · Ein-Befehl-Setup · Null Lock-in**
+**Session-gruppierter Agenten-Überblick · gewohnte Geste (prefix + e) · read-only · null Lock-in**
 
 ![tmux](https://img.shields.io/badge/tmux-3.0%2B-1BB91F?style=flat-square&logo=tmux&logoColor=white)
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Hooks-D97757?style=flat-square)
 ![Shell](https://img.shields.io/badge/Shell-Bash-4EAA25?style=flat-square&logo=gnubash&logoColor=white)
 ![Upstream](https://img.shields.io/badge/upstream-tmux--agent--sidebar_v0.13.0-7aa2f7?style=flat-square&logo=github&logoColor=white)
+![Read-only](https://img.shields.io/badge/Datenzugriff-read--only-3dd68c?style=flat-square)
+![shellcheck](https://img.shields.io/badge/shellcheck-0_Errors%2FWarnings-3dd68c?style=flat-square)
 ![Platform](https://img.shields.io/badge/Platform-Linux_%7C_macOS-555?style=flat-square&logo=linux&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 ![Additiv](https://img.shields.io/badge/Installer-additiv_%2B_r%C3%BCckbaubar-9ece6a?style=flat-square)
-![Headless](https://img.shields.io/badge/headless_VPS-tauglich-7dcfff?style=flat-square)
 
 </div>
 
@@ -23,187 +24,210 @@
 
 ## Über das Projekt
 
-[`tmux-agent-sidebar`](https://github.com/hiroppy/tmux-agent-sidebar) von hiroppy ist ein exzellentes
-Rust-Tool: eine tmux-Sidebar, die **jedes Claude-Code-, Codex- und OpenCode-Pane über alle Sessions
-und Fenster hinweg** live überwacht — Status, Prompts, Tool-Calls, Git-Stand, Worktrees.
+Wer mit **mehreren tmux-Sessions** arbeitet — in jeder eine Claude-Code-Instanz, jede an etwas
+anderem — verliert schnell den Überblick: *In welcher Session läuft gerade was? Welche wartet auf
+meine Freigabe?* [hiroppys](https://github.com/hiroppy/tmux-agent-sidebar) exzellente
+`tmux-agent-sidebar` zeigt jeden Agenten-Pane live, gruppiert aber **nach Git-Repo** — nicht nach
+deinen benannten Sessions.
 
-**agentdeck ist kein Fork und kein Re-Upload dieses Tools.** Es ist die **Integrationsschicht**
-drumherum: ein additiver Ein-Befehl-Installer, saubere Config-Snippets, ein verifizierter
-Statusline- und ein Remote-Notification-Baustein, ehrliche Betriebsdoku und ein chirurgischer Rückbau
-— alles auf ein **headless-VPS-/SSH-Setup ohne TPM** zugeschnitten (wie `tmux-resurrect`/`continuum`).
+**agentdeck setzt genau hier an.** Es ist **kein Fork** und **kein Re-Upload** dieses Tools, sondern:
 
-> **Inhalt:** [Highlights](#highlights) · [Quickstart](#quickstart) · [Wie es funktioniert](#wie-es-funktioniert)
-> · [Konfiguration](#konfiguration) · [Keybinds](#keybinds) · [Senior-Extras](#senior-extras)
-> · [Headless-Realität](#headless-realität-ehrlich) · [Rückbau](#rückbau) · [Danke · Upstream](#danke--upstream)
+- ein eigener **Deck** — eine toggelbare linke Sidebar (dieselbe Geste wie bisher, `prefix + e`), die
+  **nach tmux-Session gruppiert** und **Handlungsbedarf zuerst** zeigt;
+- die bewährte **Integrationsschicht** drumherum: additiver Ein-Befehl-Installer, saubere
+  Config-Snippets, ein verifizierter Statusline- und ein Remote-Notification-Baustein, ehrliche
+  Betriebsdoku und ein chirurgischer Rückbau — zugeschnitten auf **headless-VPS/SSH**.
+
+Der Deck **sammelt keine neuen Daten**: er liest nur zusammen, was ohnehin schon live anfällt
+(tmux-Pane-Optionen, Claude-Session-Dateien, Transcript) — read-only, ohne Dauerprozess.
+hiroppys Detail-Sidebar bleibt vollständig erhalten, nur eine Taste weiter (`prefix + E`).
+
+> **Inhalt:** [Highlights](#highlights) · [Der Deck](#der-deck-prefix--e) · [Wie es funktioniert](#wie-es-funktioniert)
+> · [Bedienung](#bedienung) · [Installation](#installation) · [Konfiguration](#konfiguration)
+> · [Headless-Realität](#headless-realität-ehrlich) · [Rückbau](#rückbau) · [Projektstruktur](#projektstruktur)
+> · [Danke · Upstream](#danke--upstream)
 
 ---
 
 ## Highlights
 
-- 🧩 **Ein Befehl, additiv** — `install.sh` hängt nur an und legt vor jeder Änderung Backups an,
-  überschreibt **nie** (`config/tmux.conf.snippet`, `config/claude-hooks.snippet.json`). `~/.claude.json`
-  wird nie berührt.
-- 🎨 **Dezente Status-Farben** — gedämpfte Tokyo-Night-Palette auf den sinnvollen Elementen
-  (running/waiting/error, Akzent, Branch) via `@sidebar_color_*` in `config/tmux.conf.snippet`.
-  Farbe als Funktion, nicht Deko.
-- 📊 **Echte Statusline, keine Fake-Zahlen** — `extras/statusline.sh` liest Kontext-% und Kosten aus
-  dem offiziellen JSON (`context_window.used_percentage`, `cost.total_cost_usd`); fehlt ein Feld,
-  wird das Segment weggelassen statt geraten.
-- 📱 **Push aufs Handy — headless-tauglich** — `extras/notify-ntfy.sh` schickt bei `Notification`/`Stop`
-  einen ntfy-Push. Auf dem VPS der einzige zuverlässige Weg (Desktop-Notifications fehlen dort).
-- 💸 **Echtes Token-/Kosten-Tracking** — [`ccusage`](https://github.com/ryoppippi/ccusage) rechnet aus
-  den lokalen Session-Logs (`~/.claude/projects/**/*.jsonl`) — kein API-Key, nichts wird hochgeladen.
-- ♻️ **Voll rückbaubar** — `uninstall.sh` entfernt chirurgisch nur agentdeck-Einträge; jeder Schritt
-  mit `.bak-<zeitstempel>` (`docs/ROLLBACK.md`).
+- **Session-Überblick auf einen Blick.** Alle tmux-Sessions, gruppiert nach *deinen* Namen. Jede
+  Claude-Instanz mit Modell, aktivem Agent und Status; Sessions ohne Claude gedimmt, Hintergrund als `(bg)`.
+- **Handlungsbedarf zuerst.** Wartet eine Instanz auf dich (Freigabe/Eingabe) oder ist sie auf Fehler
+  gelaufen, steht sie oben — amber bzw. rot markiert. Kein Scrollen, kein Suchen.
+- **Gewohnte Geste.** Auf-/zuklappen wie immer: `prefix + e`. hiroppys Detail-Sidebar liegt auf `prefix + E`.
+- **Read-only & ohne Daemon.** Ein Frame = ein Join aus drei bereits laufenden Quellen. Der
+  Refresh-Loop lebt nur, solange die Sidebar offen ist, und beendet sich beim Schließen von selbst.
+- **Sicher im Umgang mit Panes.** Geschlossen wird ausschließlich der eigene, markierte Deck-Pane —
+  nie ein Arbeits- oder hiroppy-Pane.
+- **Enterprise-Optik, emoji-frei.** Geometrische Statusglyphen (`● ▲ ○ ■`), gedämpfte Farben als
+  Funktion, nicht als Deko. `NO_COLOR` und Nicht-TTY werden respektiert.
+- **Additiv & rückbaubar.** Der Installer fasst nichts an, ohne vorher ein `.bak-<Zeitstempel>` zu
+  schreiben; `uninstall.sh` entfernt per Sentinel genau das Hinzugefügte.
 
 ---
 
-## Quickstart
+## Der Deck (prefix + e)
 
-```bash
-git clone https://github.com/<you>/agentdeck ~/agentdeck
-cd ~/agentdeck
+<div align="center">
+<img src="docs/readme/hero.png" width="760" alt="agentdeck-Deck: Sessions nach Handlungsbedarf sortiert">
+</div>
 
-./install.sh                                   # Sidebar + tmux-Config + die 14 Sidebar-Hooks
-# optional, einzeln oder kombiniert:
-./install.sh --with-statusline --with-ntfy     # + echte Statusline  + Handy-Push
+Jede Zeile ist eine Claude-Instanz in ihrer tmux-Session:
 
-tmux source ~/.tmux.conf                        # Config laden
-# Sidebar einblenden:  prefix + e    (alle Fenster: prefix + E)
-# danach eine NEUE Claude-Session starten — Hooks greifen erst für neue Sessions
-```
+| Element | Bedeutung |
+|---|---|
+| `▲` amber + `WARTET` | **Handlungsbedarf** — wartet auf Eingabe/Freigabe; Grund rechts daneben |
+| `■` rot + `FEHLER` | Lauf abgebrochen / Fehlerzustand |
+| `●` grün + `aktiv` | arbeitet gerade |
+| `○` gedimmt + `idle` | bereit, nichts zu tun |
+| `*` hinter dem Namen | die Session, an der dein tmux-Client gerade hängt |
+| `Agent: …` | aktiver Subagent (aus `@pane_subagents`), sonst `—` |
+| Modell | aufgelöst aus dem Transcript (z. B. `Opus 4.8`), sonst `—` |
 
-Voraussetzungen: `tmux` 3.0+, `git`, `jq`. Zum Bauen aus Quelle `cargo` (sonst holt die Sidebar beim
-ersten Load automatisch ein Prebuilt-Binary). `gh` optional (nur für PR-Nummern im Git-Tab).
+Die Kopfzeile fasst zusammen: `N Sessions · M× Claude · K braucht Aktion`. Zum Pane einer Session
+springen: `agentdeck jump <nummer|session>`.
 
 ---
 
 ## Wie es funktioniert
 
-Claude Code feuert bei jedem Ereignis einen Hook. agentdeck verdrahtet diese Hooks additiv in
-`~/.claude/settings.json`; jeder ruft hiroppys `hook.sh` mit dem Event-Namen, das die Sidebar aktuell hält.
+agentdeck forkt hiroppys Rust-Tool **nicht**. Es liest denselben Zustand, den die Claude-Hooks ohnehin
+schon in tmux-Pane-Optionen schreiben, und verbindet ihn mit den Session-Dateien von Claude Code.
 
-```mermaid
-flowchart LR
-  subgraph CC["Claude Code"]
-    E["Events: SessionStart · UserPromptSubmit ·<br/>Notification · Stop · SubagentStop · PostToolUse …"]
-  end
-  E -->|settings.json hooks| H["hook.sh claude &lt;event&gt;"]
-  H --> B["tmux-agent-sidebar (Rust-Binary)"]
-  B --> S["tmux Sidebar-Pane<br/>(Status · Prompts · Git · Worktrees)"]
-  CC -.->|stdin JSON| SL["extras/statusline.sh<br/>Kontext-% · Kosten · Branch"]
-  E -.->|Notification / Stop| N["extras/notify-ntfy.sh → 📱 ntfy"]
+<div align="center">
+<img src="docs/readme/architecture.png" width="860" alt="Architektur: Hooks schreiben den @pane_*-Bus, Deck und hiroppy lesen ihn">
+<br><sub><a href="docs/readme/architecture.svg">↗ als SVG</a></sub>
+</div>
+
+Ein einzelner Frame entsteht als read-only Join dreier Quellen — in deutlich unter einer Zehntelsekunde:
+
+<div align="center">
+<img src="docs/readme/dataflow.png" width="860" alt="Datenfluss eines Frames: drei Quellen → collect → render → Frame">
+<br><sub><a href="docs/readme/dataflow.svg">↗ als SVG</a></sub>
+</div>
+
+| Schritt | Was passiert | Code |
+|---|---|---|
+| **collect** | Ein `tmux list-panes -a` holt Topologie + alle `@pane_*` in einem Aufruf; Join über `@pane_session_id` mit `~/.claude/sessions/*.json`; Modell aus dem Transcript-Tail; Handlungsbedarf = `@pane_attention == "notification"`. | `extras/deck/lib-collect.sh` |
+| **render** | Zeilen → ANSI-Frame mit Glyphen; respektiert `NO_COLOR`/Nicht-TTY. Keine tmux-Aufrufe, keine Datei-Reads — rein und testbar. | `extras/deck/lib-render.sh` |
+| **toggle** | Linker Pane auf/zu wie hiroppys Sidebar; schließt nur den eigenen Marker-Pane; der Loop beendet sich, sobald sein Pane verschwindet. | `bin/agentdeck` |
+
+Die Trennung **Daten · Darstellung · Steuerung** ist Absicht: nur so lassen sich Collect und Render
+mit Fixtures testen, ohne tmux anzufassen.
+
+---
+
+## Bedienung
+
+Präfix = `Ctrl+b`.
+
+| Taste | Wirkung |
+|---|---|
+| `prefix + e` | **agentdeck-Deck** (Session-Überblick, Handlungsbedarf zuerst) an/aus |
+| `prefix + E` | **hiroppy-Detail-Sidebar** (Subagent-Tree, Git-Tab, Worktrees) an/aus |
+| `prefix + Alt+e` | hiroppy-Sidebar in **allen** Fenstern an/aus |
+
+Innerhalb der hiroppy-Sidebar (fokussieren mit `Ctrl+b ←`): `j`/`k` wählen, `Enter` springt zum Pane,
+`Tab` filtert nach Status, `Shift+Tab` schaltet das Activity-/Git-Panel um. Vollständig in
+[`docs/KEYBINDS.md`](docs/KEYBINDS.md).
+
+---
+
+## Installation
+
+Voraussetzungen: `tmux` 3.0+, `git`, `jq`. Zum Bauen der Sidebar aus Quelle optional `cargo`.
+
+```bash
+git clone https://github.com/NEO849/agentdeck
+cd agentdeck
+./install.sh                 # Sidebar + tmux-Config + Deck-Binds + die Claude-Hooks
+./install.sh --with-ntfy     # zusätzlich Remote-Push aufs Handy (Notification/Stop → ntfy)
+./install.sh --with-statusline  # zusätzlich die agentdeck-Statusline
 ```
 
-```
-agentdeck/
-├─ install.sh · uninstall.sh      # additiver Installer / chirurgischer Rückbau
-├─ config/
-│  ├─ tmux.conf.snippet           # @sidebar_* Verhalten + dezente Farben
-│  └─ claude-hooks.snippet.json   # die 14 Sidebar-Hook-Events (upstream, MIT)
-├─ extras/
-│  ├─ statusline.sh               # echte Kontext-/Kosten-Zeile (jq, defensiv)
-│  ├─ notify-ntfy.sh              # Notification/Stop → ntfy-Push
-│  └─ NOTIFY_BACKENDS.md          # ntfy · Pushover · Telegram
-└─ docs/  RUNBOOK.md · ROLLBACK.md · readme/
-```
+Danach `tmux source ~/.tmux.conf` und eine **neue** Claude-Session starten (Hooks greifen erst für
+neue Sessions). Der Installer ist additiv und legt vor jeder Änderung an `~/.tmux.conf` und
+`~/.claude/settings.json` ein `.bak-<Zeitstempel>` an; `~/.claude.json` wird nie berührt.
 
 ---
 
 ## Konfiguration
 
-Alle `@sidebar_*`-Optionen stehen in `config/tmux.conf.snippet` und müssen **vor** der `run-shell`-Zeile
-gesetzt sein. agentdeck weicht bewusst an zwei Stellen vom Default ab:
+tmux-Optionen (im Config-Snippet gesetzt, jederzeit per `tmux set -g` überschreibbar):
 
-| Option | Default | agentdeck | Wirkung |
-|---|---|---|---|
-| `@sidebar_width` | `15%` | **`22%`** | Prompts/Response-Previews bleiben lesbar |
-| `@sidebar_position` | `left` | `left` | linke Spalte |
-| `@sidebar_auto_create` | `on` | **`off`** | verhindert Sidebar-Flut bei `continuum`-Restore |
-| `@sidebar_color_running` | (Rust-Default) | `#9ece6a` | arbeitet — gedämpftes Grün |
-| `@sidebar_color_waiting` | (Rust-Default) | `#e0af68` | wartet — Amber |
-| `@sidebar_color_error` | (Rust-Default) | `#f7768e` | Fehler — weiches Rot |
-| `@sidebar_color_accent` / `_border` / `_branch` | (Rust-Default) | Tokyo-Night | dezente Akzente |
+| Option | Default | Wirkung |
+|---|---|---|
+| `@deck_width` | `27%` | Breite des Deck-Panes (schmaler Client/Handy → automatisch `30%`) |
+| `@deck_interval` | `2` | Refresh-Intervall des Decks in Sekunden |
+| `@sidebar_key` | `E` | Taste für hiroppys Einzel-Fenster-Toggle (von `e` auf `E` verlegt) |
+| `@sidebar_key_all` | `M-e` | hiroppys Alle-Fenster-Toggle |
 
-Jede Farboption ist über `@sidebar_color_*` frei überschreibbar (256-Code **oder** `#RRGGBB`) — einfach
-die Zeile im Snippet auskommentieren, um zum Plugin-Default zurückzukehren.
-
----
-
-## Keybinds
-
-| Taste | Wirkung |
-|---|---|
-| `prefix + e` / `prefix + E` | Sidebar an/aus — aktuelles Fenster / alle Fenster |
-| `j` / `k` | Auswahl in fokussierter Sidebar |
-| `Enter` | zum Pane des Agenten springen |
-| `h` / `l` · `Tab` | Statusfilter (all/running/waiting/idle/error/background) |
-| `r` | Repo-Filter-Popup |
-| `Shift+Tab` | Bottom-Panel Activity ⇄ Git |
-| `n` / `x` | Worktree neu / entfernen |
-| `Esc` | Fokus zurück / Popup schließen |
-
-Vollständige Referenz: [`docs/KEYBINDS.md`](docs/KEYBINDS.md) · Betrieb & Gotchas: [`docs/RUNBOOK.md`](docs/RUNBOOK.md).
-
----
-
-## Senior-Extras
-
-Was agentdeck über die reine Plugin-Installation hinaus liefert:
-
-- **Manuelle Installation ohne TPM** — reiht sich in `tmux-resurrect`/`continuum` ein; kein Plugin-Manager nötig.
-- **Additiver 14-Hook-Merge** per `jq` — Arrays werden angehängt, Bestehendes bleibt, ungültiges JSON
-  bricht ab, ohne die Datei zu beschädigen.
-- **Build-from-source-Option** (vertrauenswürdiger als Prebuilt), mit Prebuilt-Fallback.
-- **Statusline-Kollisionsschutz** — eine vorhandene Statusline wird vor dem Setzen gesichert, nie blind überschrieben.
-- **Die drei geprüften Add-ons** (Statusline, ntfy, ccusage) — jedes Opt-in, jedes gegen Primärquellen verifiziert.
+Der Deck respektiert `NO_COLOR` (dann reiner Text ohne ANSI). Remote-Notifications (ntfy/Pushover/
+Telegram) sind in [`extras/NOTIFY_BACKENDS.md`](extras/NOTIFY_BACKENDS.md) beschrieben; Tokens gehören
+nie ins Repo.
 
 ---
 
 ## Headless-Realität (ehrlich)
 
-> **Desktop-Notifications der Sidebar feuern auf einem reinen SSH-/VPS-Host nicht.** Das Plugin nutzt
-> auf Linux `notify-send`; ohne Notification-Daemon/DBus schaltet es die Funktion still ab. Genau dafür
-> ist `--with-ntfy` da — Push per ausgehendem HTTPS, ganz ohne Desktop.
-
-> **Offener Upstream-Bug [#85](https://github.com/hiroppy/tmux-agent-sidebar/issues/85):** Bei sehr
-> lang laufendem tmux-Server kann der Speicher mit aktiver Sidebar über Tage anwachsen. Workaround bis
-> zum Fix: `tmux kill-server` periodisch, dann neu attachen. Wir verschweigen das nicht — wir dokumentieren es.
+- **Desktop-Notifications von hiroppys Sidebar feuern auf reinem SSH/VPS nicht.** Das Plugin nutzt
+  unter Linux `notify-send`; fehlt der Daemon/DBus, schaltet es die Funktion still ab. Dafür gibt es
+  das ntfy-Add-on (`extras/notify-ntfy.sh`): Push aufs Handy per ausgehendem HTTPS, ganz ohne Desktop.
+- **Speicherwachstum (offener Upstream-Bug #85).** Bei sehr lang laufendem tmux-Server kann der
+  Server-Speicher mit aktiver **hiroppy-Sidebar** über Tage anwachsen. Der agentdeck-Deck ist davon
+  nicht betroffen (kein Dauerprozess — er läuft nur, solange er offen ist). Workaround für die
+  hiroppy-Sidebar bis zum Upstream-Fix: tmux-Server periodisch neu starten. Quelle:
+  github.com/hiroppy/tmux-agent-sidebar/issues/85
+- **Volle Feature-Tiefe** (Subagent-Tree, Task-Progress, Wait-Reason) nur mit **Claude Code**;
+  Codex/OpenCode werden eingeschränkter unterstützt.
 
 ---
 
 ## Rückbau
 
 ```bash
-./uninstall.sh          # entfernt chirurgisch nur agentdeck-Einträge (fragt vor dem Löschen)
+./uninstall.sh          # entfernt chirurgisch nur agentdeck-/Sidebar-Einträge, fragt vor dem Löschen
 ./uninstall.sh --yes    # ohne Rückfrage
 ```
 
-Details und der Backup-Weg von Hand: [`docs/ROLLBACK.md`](docs/ROLLBACK.md).
+Entfernt die Deck-Binds (per Sentinel), rebindet hiroppy zurück auf `e`, nimmt die Statusline nur
+zurück, wenn sie auf unser Script zeigt, und entfernt den tmux.conf-Block — jeweils mit vorherigem
+Backup. Details in [`docs/ROLLBACK.md`](docs/ROLLBACK.md).
+
+---
+
+## Projektstruktur
+
+```
+agentdeck/
+├── bin/agentdeck              # Dispatcher: deck | toggle | jump
+├── extras/
+│   ├── deck/
+│   │   ├── lib-collect.sh     # reine Datenschicht (Join der drei Quellen)
+│   │   ├── lib-render.sh      # reine Renderschicht (ANSI/Glyphen, NO_COLOR)
+│   │   └── model-map.sh       # Modell-ID → Klarname
+│   ├── notify-ntfy.sh         # Remote-Push (fail-closed)
+│   ├── statusline.sh          # Claude-Code-Statusline (Modell·Dir·Branch·Kontext·Kosten)
+│   └── sidebar-adaptive-width.sh
+├── config/
+│   ├── tmux.conf.snippet      # additive tmux-Verdrahtung (Binds + Optionen)
+│   └── claude-hooks.snippet.json
+├── docs/                      # RUNBOOK · ROLLBACK · KEYBINDS · readme/
+├── install.sh · uninstall.sh  # additiv + rückbaubar (Backups, Sentinel)
+└── LICENSE                    # MIT
+```
 
 ---
 
 ## Danke · Upstream
 
-Das Herzstück ist **[hiroppy/tmux-agent-sidebar](https://github.com/hiroppy/tmux-agent-sidebar)** (Rust,
-MIT, v0.13.0) von **Yuta Hiroto** — ohne dieses Tool gäbe es agentdeck nicht. agentdeck installiert und
-konfiguriert es, dupliziert aber keinen seiner Quellcode. Bitte dort einen Stern lassen. 💙
-
-`config/claude-hooks.snippet.json` ist hiroppys `hooks/hooks.json` (MIT) unverändert übernommen.
+Der Live-Zustand, den der Deck liest, stammt aus [hiroppys](https://github.com/hiroppy)
+[`tmux-agent-sidebar`](https://github.com/hiroppy/tmux-agent-sidebar) (Rust, MIT) — ein hervorragendes
+Tool, das agentdeck ergänzt, nicht ersetzt. Alle Marken und Rechte an der Sidebar liegen bei hiroppy.
 
 ---
 
-## Autor
-
-**FREE DATA Solutions**
-🌐 [f3-data-solutions.com](https://www.f3-data-solutions.com) · 🐙 GitHub
-
----
-
-## Lizenz
-
-MIT — siehe [`LICENSE`](LICENSE).
-
-<sub>agentdeck (Wrapper/Installer) steht unter MIT. Das eingebundene `tmux-agent-sidebar` ist ein
-separates Werk von hiroppy unter eigener MIT-Lizenz; `ccusage`, `ntfy`, `Pushover` und `Telegram` sind
-Werke/Dienste ihrer jeweiligen Anbieter und unterliegen deren Lizenzen/Bedingungen.</sub>
+<div align="center">
+<sub>Gebaut für den Alltag mit vielen parallelen Claude-Code-Sessions. MIT-Lizenz.</sub>
+</div>
