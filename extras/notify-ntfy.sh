@@ -26,6 +26,7 @@ set -u
 # --- Config laden (falls Vars nicht schon gesetzt) ---------------------------
 if [ -z "${NTFY_URL:-}${NTFY_TOPIC:-}" ]; then
   for f in "${AGENTDECK_NTFY_ENV:-}" "$HOME/.config/agentdeck/ntfy.env"; do
+    # shellcheck source=/dev/null
     if [ -n "$f" ] && [ -f "$f" ]; then set -a; . "$f"; set +a; break; fi
   done
 fi

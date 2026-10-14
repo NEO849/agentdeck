@@ -31,6 +31,10 @@ esac; done
 need() { command -v "$1" >/dev/null 2>&1 || { echo "FEHLT: $1 — bitte installieren." >&2; exit 1; }; }
 need git; need tmux; need jq
 
+# agentdeck-Deck-Skripte ausführbar machen (idempotent, schadlos)
+chmod +x "$SCRIPT_DIR/bin/agentdeck" 2>/dev/null || true
+chmod +x "$SCRIPT_DIR"/extras/deck/*.sh 2>/dev/null || true
+
 echo "=== 1/4  Sidebar-Plugin ==="
 if [ -d "$PLUG" ]; then
   echo "  $PLUG existiert bereits — überspringe Clone."
@@ -54,7 +58,8 @@ if grep -q "tmux-agent-sidebar.tmux" "$TMUXCONF" 2>/dev/null; then
 else
   [ -f "$TMUXCONF" ] && cp -a "$TMUXCONF" "$TMUXCONF.bak-$TS"
   printf '\n' >> "$TMUXCONF"
-  cat "$SCRIPT_DIR/config/tmux.conf.snippet" >> "$TMUXCONF"
+  # __AGENTDECK__ → absoluter Pfad zu bin/agentdeck (wie der Hook-Merge $PLUG ersetzt)
+  sed "s#__AGENTDECK__#$SCRIPT_DIR/bin/agentdeck#g" "$SCRIPT_DIR/config/tmux.conf.snippet" >> "$TMUXCONF"
   echo "  angehängt (Backup: $TMUXCONF.bak-$TS)"
 fi
 
@@ -110,7 +115,8 @@ echo "  Sidebar-Hooks aktiv: $(grep -o 'tmux-agent-sidebar/hook.sh' "$SETTINGS" 
 echo
 echo "NÄCHSTE SCHRITTE:"
 echo "  1) tmux source $TMUXCONF"
-echo "  2) Sidebar einblenden: prefix + e   (alle Fenster: prefix + E)"
+echo "  2) agentdeck-Deck (Session-Überblick, Handlungsbedarf zuerst): prefix + e"
+echo "     hiroppys Detail-Sidebar (Subagent-Tree/Git/Worktrees):       prefix + E"
 echo "  3) NEUE Claude-Session starten (Hooks greifen erst für neue Sessions)."
 echo
 echo "Rückbau jederzeit:  $SCRIPT_DIR/uninstall.sh"

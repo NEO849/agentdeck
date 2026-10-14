@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────────────────
+# agentdeck · Dispatcher
+#   agentdeck deck [--loop]     EINEN Frame (oder Auto-Refresh-Loop) → stdout
+#   agentdeck toggle [win]      linke Deck-Sidebar im Fenster auf/zu (prefix+e)
+#   agentdeck jump <n|session>  zum Pane der n-ten Zeile / der Session springen
+#
+# Grundprinzip: read-only am System, EINZIGE Mutation ist das Öffnen/Schließen
+# UNSERES eigenen Panes (Marker @deck_pane=1). Es wird NIE ein Pane gekillt, der
+# diesen Marker nicht trägt — damit kann weder ein User- noch hiroppys Pane
+# versehentlich sterben. Blockiert tmux nie (endet tolerant).
+# ─────────────────────────────────────────────────────────────────────────────
+set -uo pipefail
+
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LIB="$REPO_DIR/extras/deck"
+SELF="$REPO_DIR/bin/agentdeck"
+# shellcheck source=/dev/null
+. "$LIB/model-map.sh"
+# shellcheck source=/dev/null
+. "$LIB/lib-collect.sh"
+# shellcheck source=/dev/null
+. "$LIB/lib-render.sh"
+
+cmd_deck() {
+  if [ "${1:-}" = "--loop" ]; then
+    trap 'exit 0' TERM INT HUP
+    local iv; iv="$(tmux show -gv @deck_interval 2>/dev/null || true)"
+    case "$iv" in ''|*[!0-9]*) iv=2 ;; esac
+    local mypane="${TMUX_PANE:-}"
+    while :; do
+      # Pane geschlossen? deterministisch beenden (unabhängig von Signal-Timing)
+      if [ -n "$mypane" ] && ! tmux display-message -p -t "$mypane" '#{pane_id}' >/dev/null 2>&1; then
+        exit 0
+      fi
+      clear 2>/dev/null || printf '\033[2J\033[H'
+      collect_rows | render_frame
+      sleep "$iv"
+    done
+  else
+    collect_rows | render_frame
+  fi
+}
+
+cmd_toggle() {
+  command -v tmux >/dev/null 2>&1 || exit 0
+  local win; win="${1:-$(tmux display -p '#{window_id}' 2>/dev/null)}"
+  [ -n "$win" ] || exit 0
+
+  # existierenden Deck-Pane (nur @deck_pane==1) finden → dann schließen (Toggle aus)
+  local existing
+  existing="$(tmux list-panes -t "$win" -F '#{pane_id} #{@deck_pane}' 2>/dev/null \
+    | awk '$2=="1"{print $1; exit}')"
+  if [ -n "$existing" ]; then
+    tmux kill-pane -t "$existing" 2>/dev/null || true
+    return 0
+  fi
+
+  # Breite bestimmen: deck-eigenes @deck_width (Default 27%), Handy (≤100 Spalten) → 30%
+  local cw; cw="$(tmux display -p -t "$win" '#{window_width}' 2>/dev/null)"
+  case "$cw" in ''|*[!0-9]*) cw=200 ;; esac
+  local pct; pct="$(tmux show -gv @deck_width 2>/dev/null || true)"; [ -z "$pct" ] && pct='27%'
+  local clientw; clientw="$(tmux display -p '#{client_width}' 2>/dev/null)"
+  case "$clientw" in ''|*[!0-9]*) clientw="$cw" ;; esac
+  [ "$clientw" -le 100 ] && pct='30%'
+  local n="${pct%\%}"; case "$n" in ''|*[!0-9]*) n=27 ;; esac
+  local wcols=$(( cw * n / 100 )); [ "$wcols" -lt 24 ] && wcols=24
+
+  # links einfügen (volle Höhe), Fokus danach zurück auf den vorher aktiven Pane
+  local active leftmost deck
+  active="$(tmux display -p -t "$win" '#{pane_id}' 2>/dev/null)"
+  leftmost="$(tmux list-panes -t "$win" -F '#{pane_left} #{pane_id}' 2>/dev/null \
+    | sort -n | head -1 | awk '{print $2}')"
+  [ -n "$leftmost" ] || leftmost="$active"
+  deck="$(tmux split-window -hfb -l "$wcols" -t "$leftmost" -P -F '#{pane_id}' \
+    "exec '$SELF' deck --loop" 2>/dev/null)" || return 0
+  tmux set -p -t "$deck" @deck_pane 1 2>/dev/null || true
+  if [ -n "$active" ]; then tmux select-pane -t "$active" 2>/dev/null || true; fi
+}
+
+cmd_jump() {
+  command -v tmux >/dev/null 2>&1 || exit 0
+  local sel="${1:-}"; [ -n "$sel" ] || exit 0
+  local target
+  case "$sel" in
+    [0-9]*) target="$(collect_rows | awk -F'[|]' -v n="$sel" '$1=="C"{c++; if(c==n){print $9; exit}}')" ;;
+    *)      target="$(collect_rows | awk -F'[|]' -v s="$sel" '$1=="C" && $2==s{print $9; exit}')" ;;
+  esac
+  if [ -z "$target" ]; then tmux display-message "agentdeck: kein Ziel '$sel'" 2>/dev/null || true; exit 0; fi
+  local sess rest win pane
+  sess="${target%%:*}"; rest="${target#*:}"; win="${rest%%.*}"; pane="${rest#*.}"
+  if ! tmux has-session -t "$sess" 2>/dev/null; then
+    tmux display-message "agentdeck: Session '$sess' weg" 2>/dev/null || true; exit 0
+  fi
+  tmux switch-client -t "$sess" \; select-window -t "$sess:$win" \; select-pane -t "$pane" 2>/dev/null || true
+}
+
+case "${1:-}" in
+  deck)        shift; cmd_deck "$@" ;;
+  toggle)      shift; cmd_toggle "$@" ;;
+  jump)        shift; cmd_jump "$@" ;;
+  -h|--help|'') printf 'usage: agentdeck {deck [--loop] | toggle [win] | jump <n|session>}\n' ;;
+  *)           printf 'agentdeck: unbekanntes Kommando: %s\n' "$1" >&2; exit 2 ;;
+esac

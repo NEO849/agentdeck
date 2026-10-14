@@ -1,9 +1,7 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# agentdeck · tmux-agent-sidebar Verdrahtung
+# agentdeck · tmux-agent-sidebar Verdrahtung ─────────────────────────────────
 # Additiv an ~/.tmux.conf anhängen — wie tmux-resurrect / tmux-continuum.
 # WICHTIG: Alle @sidebar_* Optionen MÜSSEN vor der run-shell-Zeile stehen
-# (das Plugin liest sie beim Laden ein).
-# ─────────────────────────────────────────────────────────────────────────────
+# (das Plugin liest sie beim Laden ein). uninstall.sh entfernt ab dieser Zeile.
 
 # ─── Verhalten ───────────────────────────────────────────────────────────────
 # Toggle: prefix + e (aktuelles Fenster) / prefix + E (alle Fenster).
@@ -12,6 +10,15 @@ set -g @sidebar_position left       # left | right
 set -g @sidebar_auto_create off     # Default on — AUS, sonst öffnet continuum-Restore viele Sidebars
 # set -g @sidebar_bottom_height 20  # Activity/Git-Panel-Höhe in Zeilen (0 = ausblenden)
 # set -g @sidebar_pet off           # animiertes Pet im Bottom-Panel (Spielerei, Default aus)
+
+# ─── agentdeck-Deck belegt prefix+e → hiroppy-Sidebar wandert auf prefix+E ───
+# Der session-gruppierte agentdeck-Deck (Handlungsbedarf zuerst) liegt auf
+# prefix+e; hiroppys Detail-Sidebar (Subagent-Tree/Git/Worktrees) auf prefix+E.
+# WICHTIG: diese @sidebar_*-Zeilen MÜSSEN vor der run-shell-Zeile stehen.
+set -g @sidebar_key E               # hiroppy Einzel-Toggle: e → E (gibt e für den Deck frei)
+set -g @sidebar_key_all M-e         # hiroppy Alle-Fenster-Toggle weg von E (sonst Kollision)
+set -g @deck_width 27%              # Deck-Breite (Desktop); Handy (≤100 Spalten) → 30% automatisch
+set -g @deck_interval 2             # Deck-Refresh in Sekunden
 
 # ─── Dezente Farbakzente (Tokyo-Night, passend zu bg #1a1b26) ────────────────
 # Farbe hier = Funktion, nicht Deko: Status auf einen Blick lesbar.
@@ -27,5 +34,12 @@ set -g @sidebar_color_section_title "#7aa2f7"
 set -g @sidebar_color_branch        "#7dcfff"   # Git-Branch
 set -g @sidebar_color_response_arrow "#7dcfff"
 
-# ─── Plugin laden (MUSS die letzte Zeile dieses Blocks sein) ─────────────────
+# ─── Plugin laden (MUSS vor den agentdeck-Binds stehen) ──────────────────────
 run-shell ~/.tmux/plugins/tmux-agent-sidebar/tmux-agent-sidebar.tmux
+
+# >>> agentdeck deck >>>  (von install.sh gesetzt/entfernt — Pfad wird eingesetzt)
+# Muss NACH dem Plugin-Load stehen, damit dieser Bind gewinnt. prefix+e öffnet
+# den agentdeck-Deck links; erneut = zu. __AGENTDECK__ ersetzt install.sh durch
+# den absoluten Pfad zu bin/agentdeck.
+bind e run-shell "__AGENTDECK__ toggle '#{window_id}'"
+# <<< agentdeck deck <<<

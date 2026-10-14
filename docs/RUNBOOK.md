@@ -6,8 +6,9 @@ Betriebswissen für den Alltag mit der Sidebar — inkl. der ehrlichen Fallstric
 
 | Taste | Wirkung |
 |---|---|
-| `prefix + e` | Sidebar im aktuellen Fenster an/aus |
-| `prefix + E` | Sidebar in **allen** Fenstern an/aus |
+| `prefix + e` | **agentdeck-Deck** (Session-Überblick, Handlungsbedarf zuerst) an/aus |
+| `prefix + E` | **hiroppy-Detail-Sidebar** (Subagent-Tree/Git/Worktrees) an/aus |
+| `prefix + Alt+e` | hiroppy-Sidebar in **allen** Fenstern an/aus |
 
 In fokussierter Sidebar (ohne Prefix — Fokus per Maus oder `Ctrl+b ←`):
 

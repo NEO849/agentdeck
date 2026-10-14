@@ -45,13 +45,18 @@ fi
 echo "=== 2/3  tmux.conf-Block entfernen ==="
 if [ -f "$TMUXCONF" ] && grep -q "tmux-agent-sidebar.tmux" "$TMUXCONF"; then
   cp -a "$TMUXCONF" "$TMUXCONF.bak-$TS"
-  # vom agentdeck-Markerkommentar bis zur run-shell-Zeile (inkl.) löschen;
-  # fällt der Marker, entferne mindestens die run-shell-Zeile selbst.
+  # (1) vom agentdeck-Markerkommentar bis zur run-shell-Zeile (inkl.) löschen —
+  #     erfasst auch die @sidebar_key/@deck_*-Zeilen (liegen in diesem Block).
+  # (2) den Deck-Bind-Block NACH run-shell per Sentinel löschen.
+  #     Fällt ein Marker, entferne mindestens die run-shell-Zeile selbst.
   awk '
     /agentdeck · tmux-agent-sidebar/ {skip=1}
     skip && /tmux-agent-sidebar\.tmux/ {skip=0; next}
     skip {next}
     /tmux-agent-sidebar\.tmux/ {next}
+    /# >>> agentdeck deck >>>/ {d=1}
+    d && /# <<< agentdeck deck <<</ {d=0; next}
+    d {next}
     {print}
   ' "$TMUXCONF" > "$TMUXCONF.tmp" && mv "$TMUXCONF.tmp" "$TMUXCONF"
   echo "  entfernt (Backup: $TMUXCONF.bak-$TS)"
